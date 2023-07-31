@@ -5,9 +5,9 @@ from executor.abstract_executor import Execute
 
 
 class Processor(models.Model):
-    vm_name = models.CharField(max_length=100)
+    vm_name = models.CharField()
     vm_id = models.UUIDField()
-    host_name = models.CharField(max_length=100)
+    host_name = models.CharField()
     count = models.IntegerField()
     compatibility_for_older_os = models.BooleanField()
     maximum = models.IntegerField()
@@ -23,7 +23,8 @@ class Processor(models.Model):
         -Maximum %s
         -Reserve %s 
         -RelativeWeight %s
-        ''' % (self.vm_name, self.count, self.compatibility_for_older_os, self.maximum, self.reserve, self.relative_weight)
+        ''' % (
+            self.vm_name, self.count, self.compatibility_for_older_os, self.maximum, self.reserve, self.relative_weight)
         command = ps_script + ' ' + param
         result = Execute.execute_command(command, convert_to_json=False)
         if result == "":
@@ -42,9 +43,9 @@ class Processor(models.Model):
 
 
 class Memory(models.Model):
-    vm_name = models.CharField(max_length=100)
+    vm_name = models.CharField()
     vm_id = models.UUIDField()
-    host_name = models.CharField(max_length=100)
+    host_name = models.CharField()
     dynamic_memory = models.BooleanField()
     minimum_bytes = models.CharField()
     startup_bytes = models.CharField()
@@ -62,8 +63,10 @@ class Memory(models.Model):
                     -Maximum %s
                     -Priority %s
                     -Buffer %s
-                    ''' % (self.vm_name, self.minimum_bytes, self.startup_bytes, self.maximum_bytes, self.priority, self.buffer)
+                    ''' % (
+                self.vm_name, self.minimum_bytes, self.startup_bytes, self.maximum_bytes, self.priority, self.buffer)
         else:
+            # When memory is static, the Minimum, Maximum and Buffer not used.
             ps_script = '%s\\scripts\\memory\\set_memory_static.ps1' % os.path.dirname(os.path.abspath(__file__))
             param = '''
                     -VMName %s
@@ -87,6 +90,105 @@ class Memory(models.Model):
         return result
 
 
+class AbstractSwitch(models.Model):
+    host_name = models.CharField()
+    switch_name = models.CharField()
+    switch_id = models.CharField()
+    # The JSON type output callback switch type an int, not a string
+    # 0 is Private, 1 is Internal, 2 is External
+    switch_type = models.IntegerField()
+
+    class Meta:
+        abstract = True
+
+    def get_switch(self):
+        ps_script = '%s\\scripts\\switch\\get_switch.ps1' % os.path.dirname(os.path.abspath(__file__))
+        param = '''
+                -Name %s
+                ''' % self.switch_name
+        command = ps_script + ' ' + param
+        result = Execute.execute_command(command, convert_to_json=True)
+        return result
+
+    def remove_switch(self):
+        ps_script = '%s\\scripts\\switch\\remove_switch.ps1' % os.path.dirname(os.path.abspath(__file__))
+        param = '''
+                -SwitchName %s
+                ''' % self.switch_name
+        command = ps_script + ' ' + param
+        result = Execute.execute_command(command, convert_to_json=False)
+        if result == "":
+            return True
+        else:
+            return result
+
+
+class PrivateSwitch(AbstractSwitch):
+
+    def new_switch(self):
+        self.switch_type = "Private"
+        ps_script = '%s\\scripts\\switch\\new_switch_private.ps1' % os.path.dirname(os.path.abspath(__file__))
+        param = '''
+                -SwitchName %s
+                ''' % self.switch_name
+        command = ps_script + ' ' + param
+        result = Execute.execute_command(command, convert_to_json=True)
+        if self.switch_name in result:
+            return True
+        else:
+            return result
+
+
+class InternalSwitch(AbstractSwitch):
+
+    def new_switch(self):
+        self.switch_type = "Internal"
+        ps_script = '%s\\scripts\\switch\\new_switch_internal.ps1' % os.path.dirname(os.path.abspath(__file__))
+        param = '''
+                -SwitchName %s
+                ''' % self.switch_name
+        command = ps_script + ' ' + param
+        result = Execute.execute_command(command, convert_to_json=True)
+        if self.switch_name in result:
+            return True
+        else:
+            return result
+
+
+class ExternalSwitch(AbstractSwitch):
+    adapter_name = models.CharField()
+    allow_host_use_adapter = models.BooleanField()
+
+    def new_switch(self):
+        self.switch_type = "External"
+        ps_script = '%s\\scripts\\switch\\new_switch_external.ps1' % os.path.dirname(os.path.abspath(__file__))
+        param = '''
+                -SwitchName %s
+                -AdapterName %s
+                -AllowHostUseAdapter %s
+                ''' % (self.switch_name, self.adapter_name, self.allow_host_use_adapter)
+        command = ps_script + ' ' + param
+        result = Execute.execute_command(command, convert_to_json=True)
+        if self.switch_name in result:
+            return True
+        else:
+            return result
+
+    def set_switch(self):
+        ps_script = '%s\\scripts\\switch\\set_switch_external.ps1' % os.path.dirname(os.path.abspath(__file__))
+        param = '''
+                -SwitchName %s
+                -AdapterName %s
+                -AllowHostUseAdapter %s
+                ''' % (self.switch_name, self.adapter_name, self.allow_host_use_adapter)
+        command = ps_script + ' ' + param
+        result = Execute.execute_command(command, convert_to_json=False)
+        if result == "":
+            return True
+        else:
+            return result
+
+
 class VirtualMachine(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField()
     id = models.UUIDField()
