@@ -42,6 +42,7 @@ class Processor(models.Model):
         return result
 
 
+# TODO: Abstract Memory class to AbstractMemory, and create two class DynamicMemory and StaticMemory
 class Memory(models.Model):
     vm_name = models.CharField()
     vm_id = models.UUIDField()
