@@ -1,7 +1,7 @@
 import os
 
 from django.db import models
-from ComputeUnit4HV.executor.abstract_executor import Execute
+from ComputeUnit4HV.executor import executor as Execute
 
 
 class Processor(models.Model):

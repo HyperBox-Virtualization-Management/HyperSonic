@@ -1,9 +1,7 @@
 import os
-import this
 
 from django.db import models
-
-from ComputeUnit4HV.executor.abstract_executor import Execute
+from ComputeUnit4HV.executor import executor as Execute
 
 
 class AbstractMemory(models.Model):
